@@ -1,0 +1,36 @@
+services:
+  opencode:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        USER_ID: ${USER_ID:-1000}
+        GROUP_ID: ${GROUP_ID:-1000}
+    image: opencode-sandbox:latest
+    working_dir: /workspace
+    user: "${USER_ID:-1000}:${GROUP_ID:-1000}"
+    stdin_open: true
+    tty: true
+    init: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    network_mode: ${NETWORK_MODE:-bridge}
+    volumes:
+      - type: bind
+        source: ${SANDBOX_PROJECT_DIR}
+        target: /workspace
+      - type: bind
+        source: ${HOST_OPENCODE_CONFIG_DIR}
+        target: /home/opencode/.config/opencode
+      - type: volume
+        source: opencode_cache
+        target: /home/opencode/.cache/opencode
+      - type: volume
+        source: opencode_data
+        target: /home/opencode/.local/share/opencode
+
+volumes:
+  opencode_cache:
+  opencode_data:

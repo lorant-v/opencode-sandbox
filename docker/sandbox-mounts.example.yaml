@@ -1,0 +1,15 @@
+services:
+  opencode:
+    volumes: []
+
+# Example extra mounts:
+# services:
+#   opencode:
+#     volumes:
+#       - type: bind
+#         source: /absolute/path/to/another/project
+#         target: /workspace/projects/another-project
+#       - type: bind
+#         source: /absolute/path/to/notes
+#         target: /workspace/notes
+#         read_only: true

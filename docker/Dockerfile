@@ -1,0 +1,23 @@
+FROM ghcr.io/anomalyco/opencode:latest
+
+ARG USER_ID=1000
+ARG GROUP_ID=1000
+
+USER root
+
+RUN apk add --no-cache \
+    bash \
+    ca-certificates \
+    curl \
+    git \
+  && addgroup -g "$GROUP_ID" opencode \
+  && adduser -D -u "$USER_ID" -G opencode -h /home/opencode -s /bin/bash opencode \
+  && mkdir -p /home/opencode /workspace \
+  && chown -R "$USER_ID:$GROUP_ID" /home/opencode /workspace
+
+ENV HOME=/home/opencode
+
+USER opencode
+WORKDIR /workspace
+
+ENTRYPOINT ["opencode"]

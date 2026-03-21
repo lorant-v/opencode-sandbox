@@ -1,0 +1,123 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+resolve_script_dir() {
+  local source_path="${BASH_SOURCE[0]}"
+
+  while [[ -L "$source_path" ]]; do
+    local dir
+    dir=$(cd "$(dirname "$source_path")" && pwd)
+    source_path=$(readlink "$source_path")
+    [[ "$source_path" != /* ]] && source_path="$dir/$source_path"
+  done
+
+  cd "$(dirname "$source_path")" && pwd
+}
+
+SCRIPT_DIR=$(resolve_script_dir)
+REPO_ROOT=$(cd "$SCRIPT_DIR/.." && pwd)
+DOCKER_DIR="$REPO_ROOT/docker"
+COMPOSE_FILE="$DOCKER_DIR/compose.yaml"
+MOUNTS_TEMPLATE="$DOCKER_DIR/sandbox-mounts.example.yaml"
+PROJECT_CONFIG_DIR="$PWD/.opencode"
+MOUNTS_FILE="$PROJECT_CONFIG_DIR/sandbox-mounts.yaml"
+HOST_OPENCODE_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/opencode"
+declare -a COMPOSE_RUN_ARGS=()
+declare -a OPENCODE_ARGS=()
+
+usage() {
+  cat <<'EOF'
+Usage:
+  opencode-sandbox [--init-mounts] [--compose <docker compose run args>...] [-- opencode args]
+
+Behavior:
+  - Always mounts the current directory at /workspace.
+  - If ./.opencode/sandbox-mounts.yaml exists, loads it as an additional
+    Compose override.
+
+Options:
+  --init-mounts  Write a starter override file to ./.opencode/sandbox-mounts.yaml.
+  --compose      Pass remaining arguments to docker compose run.
+  -h, --help     Show this help.
+
+Notes:
+  - Arguments after --compose are passed to docker compose run.
+  - Pass extra OpenCode arguments after --.
+  - The override file is additive. It does not replace the default /workspace
+    mount.
+EOF
+}
+
+fail() {
+  printf 'error: %s\n' "$1" >&2
+  exit 1
+}
+
+write_mounts_template() {
+  mkdir -p "$PROJECT_CONFIG_DIR"
+
+  if [[ -e "$MOUNTS_FILE" ]]; then
+    fail "mount override already exists: $MOUNTS_FILE"
+  fi
+
+  cp "$MOUNTS_TEMPLATE" "$MOUNTS_FILE"
+  printf 'wrote %s\n' "$MOUNTS_FILE"
+}
+
+ensure_requirements() {
+  command -v docker >/dev/null 2>&1 || fail "docker is not installed"
+  docker compose version >/dev/null 2>&1 || fail "docker compose is not available"
+  [[ -f "$COMPOSE_FILE" ]] || fail "compose file not found: $COMPOSE_FILE"
+  mkdir -p "$HOST_OPENCODE_CONFIG_DIR"
+}
+
+run_compose() {
+  local -a compose_args=(compose -p opencode-sandbox -f "$COMPOSE_FILE")
+
+  if [[ -f "$MOUNTS_FILE" ]]; then
+    compose_args+=(-f "$MOUNTS_FILE")
+  fi
+
+  SANDBOX_PROJECT_DIR=$PWD \
+  USER_ID=$(id -u) \
+  GROUP_ID=$(id -g) \
+  HOST_OPENCODE_CONFIG_DIR=$HOST_OPENCODE_CONFIG_DIR \
+  docker "${compose_args[@]}" "$@"
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --init-mounts)
+      write_mounts_template
+      exit 0
+      ;;
+    --help|-h)
+      usage
+      exit 0
+      ;;
+    --compose)
+      shift
+      COMPOSE_RUN_ARGS=("$@")
+      break
+      ;;
+    --)
+      shift
+      OPENCODE_ARGS=("$@")
+      break
+      ;;
+    *)
+      fail "unknown argument: $1"
+      ;;
+  esac
+done
+
+ensure_requirements
+
+run_compose build
+
+if [[ ${#COMPOSE_RUN_ARGS[@]} -gt 0 ]]; then
+  run_compose run --rm --workdir /workspace "${COMPOSE_RUN_ARGS[@]}" opencode
+else
+  run_compose run --rm --workdir /workspace opencode "${OPENCODE_ARGS[@]}"
+fi
