@@ -4,9 +4,9 @@ set -euo pipefail
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 REPO_ROOT=$(cd "$SCRIPT_DIR/.." && pwd)
-SOURCE_SCRIPT="$REPO_ROOT/scripts/opencode-sandbox"
+SOURCE_SCRIPT="$REPO_ROOT/scripts/osb"
 BIN_DIR="${HOME}/.local/bin"
-TARGET_SCRIPT="$BIN_DIR/opencode-sandbox"
+TARGET_SCRIPT="$BIN_DIR/osb"
 
 guess_shell_rc() {
   local shell_name
@@ -49,4 +49,4 @@ case ":$PATH:" in
 esac
 
 printf '\nVerify with:\n'
-printf '  command -v opencode-sandbox\n'
+printf '  command -v osb\n'

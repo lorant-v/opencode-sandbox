@@ -34,7 +34,7 @@ declare -a OPENCODE_ARGS=()
 usage() {
   cat <<'EOF'
 Usage:
-  opencode-sandbox [--init-mounts] [--state-mode host|container] [--compose <docker compose run args>...] [-- opencode args]
+  osb [--init-mounts] [--state-mode host|container] [--compose <docker compose run args>...] [-- opencode args]
 
 Behavior:
   - Always mounts the current directory at /workspace.
@@ -149,7 +149,7 @@ done
 
 ensure_requirements
 
-run_compose build
+run_compose build --quiet
 
 if [[ ${#COMPOSE_RUN_ARGS[@]} -gt 0 ]]; then
   run_compose run --rm --workdir /workspace "${COMPOSE_RUN_ARGS[@]}" opencode

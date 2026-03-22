@@ -14,7 +14,7 @@ cd ~/.local/share/opencode-sandbox
 
 This creates:
 
-- `~/.local/bin/opencode-sandbox` -> `~/.local/share/opencode-sandbox/scripts/opencode-sandbox`
+- `~/.local/bin/osb` -> `~/.local/share/opencode-sandbox/scripts/osb`
 
 If `~/.local/bin` is not on your `PATH`, add this line permanently to your shell
 rc file such as `~/.bashrc` or `~/.zshrc`:
@@ -38,7 +38,7 @@ source ~/.zshrc
 Verify the install:
 
 ```bash
-command -v opencode-sandbox
+command -v osb
 ```
 
 ## Usage
@@ -46,7 +46,7 @@ command -v opencode-sandbox
 From any project or workspace directory:
 
 ```bash
-opencode-sandbox
+osb
 ```
 
 This always rebuilds the image for your current UID/GID, then mounts the current
@@ -62,16 +62,16 @@ with the container:
 Common launcher-only commands:
 
 ```bash
-opencode-sandbox --help
-opencode-sandbox --init-mounts
-opencode-sandbox --state-mode container
+osb --help
+osb --init-mounts
+osb --state-mode container
 ```
 
 Choose how OpenCode state is stored:
 
 ```bash
-opencode-sandbox --state-mode host
-opencode-sandbox --state-mode container
+osb --state-mode host
+osb --state-mode container
 ```
 
 - `host` - share OpenCode config, cache, and data with the host
@@ -80,21 +80,21 @@ opencode-sandbox --state-mode container
 Pass extra OpenCode arguments after `--`:
 
 ```bash
-opencode-sandbox -- --help
-opencode-sandbox --state-mode container -- --version
-opencode-sandbox -- --version
-opencode-sandbox -- run "summarize this repo"
-opencode-sandbox -- run --help
+osb -- --help
+osb --state-mode container -- --version
+osb -- --version
+osb -- run "summarize this repo"
+osb -- run --help
 ```
 
 Pass arguments directly to `docker compose run` after `--compose`:
 
 ```bash
-opencode-sandbox --compose --entrypoint sh
-opencode-sandbox --compose -e FOO=bar --entrypoint sh
-opencode-sandbox --state-mode container --compose --entrypoint sh
-opencode-sandbox --compose --entrypoint sh -- -lc 'id && pwd && ls'
-opencode-sandbox --compose --service-ports --entrypoint sh
+osb --compose --entrypoint sh
+osb --compose -e FOO=bar --entrypoint sh
+osb --state-mode container --compose --entrypoint sh
+osb --compose --entrypoint sh -- -lc 'id && pwd && ls'
+osb --compose --service-ports --entrypoint sh
 ```
 
 Rule of thumb:
@@ -108,7 +108,7 @@ Rule of thumb:
 Generate a starter file in the current directory:
 
 ```bash
-opencode-sandbox --init-mounts
+osb --init-mounts
 ```
 
 This creates `./.opencode/sandbox-mounts.yaml`.
@@ -157,7 +157,7 @@ itself remains disposable.
 
 ## Repository layout
 
-- `scripts/opencode-sandbox` - launcher you install on `PATH`
+- `scripts/osb` - launcher you install on `PATH`
 - `docker/Dockerfile` - wrapper image based on the official OpenCode image
 - `docker/compose.yaml` - shared runtime definition
 - `docker/compose.host.yaml` - host-shared OpenCode state mounts
@@ -172,7 +172,7 @@ Recommended checks:
 ```bash
 docker --version
 docker compose version
-bash -n ~/.local/share/opencode-sandbox/scripts/opencode-sandbox
+bash -n ~/.local/share/opencode-sandbox/scripts/osb
 bash -n ~/.local/share/opencode-sandbox/install/install.sh
 HOST_OPENCODE_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/opencode" \
 HOST_OPENCODE_CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/opencode" \
@@ -184,5 +184,5 @@ docker compose -f ~/.local/share/opencode-sandbox/docker/compose.yaml \
 Smoke test from a project directory:
 
 ```bash
-opencode-sandbox -- --version
+osb -- --version
 ```
