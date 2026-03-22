@@ -30,9 +30,21 @@ fail() {
 [[ -f "$SOURCE_SCRIPT" ]] || fail "launcher not found: $SOURCE_SCRIPT"
 
 mkdir -p "$BIN_DIR"
-ln -sfn "$SOURCE_SCRIPT" "$TARGET_SCRIPT"
 
-printf 'installed symlink: %s -> %s\n' "$TARGET_SCRIPT" "$SOURCE_SCRIPT"
+if [[ -L "$TARGET_SCRIPT" ]]; then
+  CURRENT_TARGET=$(readlink "$TARGET_SCRIPT")
+  if [[ "$CURRENT_TARGET" == "$SOURCE_SCRIPT" ]]; then
+    printf 'symlink already installed: %s -> %s\n' "$TARGET_SCRIPT" "$SOURCE_SCRIPT"
+  else
+    ln -sfn "$SOURCE_SCRIPT" "$TARGET_SCRIPT"
+    printf 'updated symlink: %s -> %s\n' "$TARGET_SCRIPT" "$SOURCE_SCRIPT"
+  fi
+elif [[ -e "$TARGET_SCRIPT" ]]; then
+  fail "target exists and is not a symlink: $TARGET_SCRIPT"
+else
+  ln -s "$SOURCE_SCRIPT" "$TARGET_SCRIPT"
+  printf 'installed symlink: %s -> %s\n' "$TARGET_SCRIPT" "$SOURCE_SCRIPT"
+fi
 
 case ":$PATH:" in
   *":$BIN_DIR:"*)
