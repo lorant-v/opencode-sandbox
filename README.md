@@ -52,17 +52,36 @@ opencode-sandbox
 This always rebuilds the image for your current UID/GID, then mounts the current
 directory at `/workspace`.
 
+By default, OpenCode state uses `host` mode, which shares these host directories
+with the container:
+
+- `~/.config/opencode`
+- `~/.cache/opencode`
+- `~/.local/share/opencode`
+
 Common launcher-only commands:
 
 ```bash
 opencode-sandbox --help
 opencode-sandbox --init-mounts
+opencode-sandbox --state-mode container
 ```
+
+Choose how OpenCode state is stored:
+
+```bash
+opencode-sandbox --state-mode host
+opencode-sandbox --state-mode container
+```
+
+- `host` - share OpenCode config, cache, and data with the host
+- `container` - keep OpenCode config, cache, and data in Docker volumes
 
 Pass extra OpenCode arguments after `--`:
 
 ```bash
 opencode-sandbox -- --help
+opencode-sandbox --state-mode container -- --version
 opencode-sandbox -- --version
 opencode-sandbox -- run "summarize this repo"
 opencode-sandbox -- run --help
@@ -73,6 +92,7 @@ Pass arguments directly to `docker compose run` after `--compose`:
 ```bash
 opencode-sandbox --compose --entrypoint sh
 opencode-sandbox --compose -e FOO=bar --entrypoint sh
+opencode-sandbox --state-mode container --compose --entrypoint sh
 opencode-sandbox --compose --entrypoint sh -- -lc 'id && pwd && ls'
 opencode-sandbox --compose --service-ports --entrypoint sh
 ```
@@ -109,12 +129,11 @@ need write access.
 - Wraps it in a local `Dockerfile` that creates a fixed `opencode` user using
   the host UID/GID.
 - Keeps build-time changes in `Dockerfile` and runtime hardening in
-  `compose.yaml`.
+  `compose.yaml` plus a state-mode overlay.
 - Drops all Linux capabilities and enables `no-new-privileges`.
 - Mounts only the current directory plus any explicit paths from the optional
   project override file.
-- Bind-mounts your host `~/.config/opencode` into the container so auth and
-  config stay in sync.
+- Supports either host-shared or container-only OpenCode state.
 - Does not mount the full home directory, SSH keys, or the Docker socket.
 
 This is a hardened local container workflow, not a microVM. Writable bind mounts
@@ -122,19 +141,27 @@ remain writable to code running inside the container.
 
 ## Persistence model
 
-The container is disposable. OpenCode state is persisted with named volumes for:
+Choose one of two modes with `--state-mode`:
 
-- `~/.cache/opencode`
-- `~/.local/share/opencode`
+- `host` (default)
+  - shares host `~/.config/opencode`
+  - shares host `~/.cache/opencode`
+  - shares host `~/.local/share/opencode`
+- `container`
+  - stores OpenCode config in a Docker volume
+  - stores OpenCode cache in a Docker volume
+  - stores OpenCode data in a Docker volume
 
-Config and auth come from your host `~/.config/opencode`. Cache and data are
-kept in Docker volumes between runs while project files stay on the host.
+In both modes, project files stay on the host at `/workspace` and the container
+itself remains disposable.
 
 ## Repository layout
 
 - `scripts/opencode-sandbox` - launcher you install on `PATH`
 - `docker/Dockerfile` - wrapper image based on the official OpenCode image
-- `docker/compose.yaml` - runtime definition and persistent volumes
+- `docker/compose.yaml` - shared runtime definition
+- `docker/compose.host.yaml` - host-shared OpenCode state mounts
+- `docker/compose.container.yaml` - container-only OpenCode state volumes
 - `docker/sandbox-mounts.example.yaml` - starter Compose override fragment
 - `install/install.sh` - symlink-based installer for typical Linux setups
 
@@ -147,7 +174,11 @@ docker --version
 docker compose version
 bash -n ~/.local/share/opencode-sandbox/scripts/opencode-sandbox
 bash -n ~/.local/share/opencode-sandbox/install/install.sh
-docker compose -f ~/.local/share/opencode-sandbox/docker/compose.yaml config
+HOST_OPENCODE_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/opencode" \
+HOST_OPENCODE_CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/opencode" \
+HOST_OPENCODE_DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/opencode" \
+docker compose -f ~/.local/share/opencode-sandbox/docker/compose.yaml \
+  -f ~/.local/share/opencode-sandbox/docker/compose.host.yaml config
 ```
 
 Smoke test from a project directory:

@@ -1,0 +1,17 @@
+services:
+  opencode:
+    volumes:
+      - type: volume
+        source: opencode_config
+        target: /home/opencode/.config/opencode
+      - type: volume
+        source: opencode_cache
+        target: /home/opencode/.cache/opencode
+      - type: volume
+        source: opencode_data
+        target: /home/opencode/.local/share/opencode
+
+volumes:
+  opencode_config:
+  opencode_cache:
+  opencode_data:

@@ -19,17 +19,22 @@ SCRIPT_DIR=$(resolve_script_dir)
 REPO_ROOT=$(cd "$SCRIPT_DIR/.." && pwd)
 DOCKER_DIR="$REPO_ROOT/docker"
 COMPOSE_FILE="$DOCKER_DIR/compose.yaml"
+COMPOSE_HOST_FILE="$DOCKER_DIR/compose.host.yaml"
+COMPOSE_CONTAINER_FILE="$DOCKER_DIR/compose.container.yaml"
 MOUNTS_TEMPLATE="$DOCKER_DIR/sandbox-mounts.example.yaml"
 PROJECT_CONFIG_DIR="$PWD/.opencode"
 MOUNTS_FILE="$PROJECT_CONFIG_DIR/sandbox-mounts.yaml"
 HOST_OPENCODE_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/opencode"
+HOST_OPENCODE_CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/opencode"
+HOST_OPENCODE_DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/opencode"
+STATE_MODE=host
 declare -a COMPOSE_RUN_ARGS=()
 declare -a OPENCODE_ARGS=()
 
 usage() {
   cat <<'EOF'
 Usage:
-  opencode-sandbox [--init-mounts] [--compose <docker compose run args>...] [-- opencode args]
+  opencode-sandbox [--init-mounts] [--state-mode host|container] [--compose <docker compose run args>...] [-- opencode args]
 
 Behavior:
   - Always mounts the current directory at /workspace.
@@ -38,10 +43,13 @@ Behavior:
 
 Options:
   --init-mounts  Write a starter override file to ./.opencode/sandbox-mounts.yaml.
+  --state-mode   Choose OpenCode state storage: host or container.
   --compose      Pass remaining arguments to docker compose run.
   -h, --help     Show this help.
 
 Notes:
+  - Host mode shares ~/.config/opencode, ~/.cache/opencode, and ~/.local/share/opencode.
+  - Container mode stores those directories in Docker volumes.
   - Arguments after --compose are passed to docker compose run.
   - Pass extra OpenCode arguments after --.
   - The override file is additive. It does not replace the default /workspace
@@ -69,11 +77,31 @@ ensure_requirements() {
   command -v docker >/dev/null 2>&1 || fail "docker is not installed"
   docker compose version >/dev/null 2>&1 || fail "docker compose is not available"
   [[ -f "$COMPOSE_FILE" ]] || fail "compose file not found: $COMPOSE_FILE"
-  mkdir -p "$HOST_OPENCODE_CONFIG_DIR"
+  [[ -f "$COMPOSE_HOST_FILE" ]] || fail "compose host file not found: $COMPOSE_HOST_FILE"
+  [[ -f "$COMPOSE_CONTAINER_FILE" ]] || fail "compose container file not found: $COMPOSE_CONTAINER_FILE"
+
+  if [[ "$STATE_MODE" == "host" ]]; then
+    mkdir -p "$HOST_OPENCODE_CONFIG_DIR" "$HOST_OPENCODE_CACHE_DIR" "$HOST_OPENCODE_DATA_DIR"
+  fi
 }
 
 run_compose() {
+  local state_file
   local -a compose_args=(compose -p opencode-sandbox -f "$COMPOSE_FILE")
+
+  case "$STATE_MODE" in
+    host)
+      state_file="$COMPOSE_HOST_FILE"
+      ;;
+    container)
+      state_file="$COMPOSE_CONTAINER_FILE"
+      ;;
+    *)
+      fail "invalid state mode: $STATE_MODE"
+      ;;
+  esac
+
+  compose_args+=(-f "$state_file")
 
   if [[ -f "$MOUNTS_FILE" ]]; then
     compose_args+=(-f "$MOUNTS_FILE")
@@ -83,6 +111,8 @@ run_compose() {
   USER_ID=$(id -u) \
   GROUP_ID=$(id -g) \
   HOST_OPENCODE_CONFIG_DIR=$HOST_OPENCODE_CONFIG_DIR \
+  HOST_OPENCODE_CACHE_DIR=$HOST_OPENCODE_CACHE_DIR \
+  HOST_OPENCODE_DATA_DIR=$HOST_OPENCODE_DATA_DIR \
   docker "${compose_args[@]}" "$@"
 }
 
@@ -95,6 +125,11 @@ while [[ $# -gt 0 ]]; do
     --help|-h)
       usage
       exit 0
+      ;;
+    --state-mode)
+      [[ $# -ge 2 ]] || fail "missing value for --state-mode"
+      STATE_MODE=$2
+      shift 2
       ;;
     --compose)
       shift

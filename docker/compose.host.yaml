@@ -1,0 +1,12 @@
+services:
+  opencode:
+    volumes:
+      - type: bind
+        source: ${HOST_OPENCODE_CONFIG_DIR}
+        target: /home/opencode/.config/opencode
+      - type: bind
+        source: ${HOST_OPENCODE_CACHE_DIR}
+        target: /home/opencode/.cache/opencode
+      - type: bind
+        source: ${HOST_OPENCODE_DATA_DIR}
+        target: /home/opencode/.local/share/opencode
