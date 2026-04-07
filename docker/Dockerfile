@@ -1,4 +1,4 @@
-FROM ghcr.io/anomalyco/opencode:latest
+FROM ghcr.io/anomalyco/opencode:1.3.17
 
 ARG USER_ID=1000
 ARG GROUP_ID=1000
