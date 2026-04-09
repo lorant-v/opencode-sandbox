@@ -1,5 +1,7 @@
 FROM ghcr.io/anomalyco/opencode:1.3.17
 
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
+
 ARG USER_ID=1000
 ARG GROUP_ID=1000
 
